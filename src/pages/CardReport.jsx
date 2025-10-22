@@ -202,8 +202,8 @@ const ReportCard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#08070E] flex items-center justify-center p-8">
-       
+    <div className="min-h-screen bg-[#08070E] flex flex-col items-center justify-center p-8 w-full">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[90vw] max-w-[800px] h-[30vh] max-h-[400px] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div
         id="report-card"
         className="relative max-w-2xl w-full p-8 rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
@@ -216,7 +216,6 @@ const ReportCard = () => {
             "0 8px 32px rgba(0,0,0,0.45), inset 0 0 0.5px 0.5px rgba(255,255,255,0.2)",
         }}
       >
-       
         {/* Header */}
         <div className="text-center mb-5 pb-3 border-b border-white/20">
           <div className="flex items-center justify-center mb-4">
@@ -230,7 +229,7 @@ const ReportCard = () => {
                 }}
               />
             </div>
-            <div className="flex-col items-start justify-center ml-2">
+            <div className="flex flex-col items-start justify-center ml-2">
               <h1 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
                 {name}
               </h1>
@@ -250,7 +249,7 @@ const ReportCard = () => {
             return (
               <div
                 key={i}
-                className="flex items-center justify-between rounded-xl p-2 border border-white/20 backdrop-bl-sm hover:bg-white/10 transition-all duration-300"
+                className="flex items-center justify-between rounded-xl p-2 border border-white/20 backdrop-blur-sm hover:bg-white/10 transition-all duration-300"
               >
                 <div className="flex items-center space-x-4 flex-1">
                   <div
@@ -286,7 +285,7 @@ const ReportCard = () => {
         </div>
 
         {/* Footer */}
-        <div className="text-center pt-6 border-t border-white/20">
+        <div className="text-center pt-6 border-t border-white/20 space-y-2">
           <p className="text-gray-300 text-sm">
             Generated on{" "}
             {new Date().toLocaleDateString("en-US", {
@@ -294,6 +293,9 @@ const ReportCard = () => {
               month: "long",
               day: "numeric",
             })}
+          </p>
+          <p className="text-cyan-300 text-sm font-medium">
+            📸 Take a screenshot and share with your team!
           </p>
         </div>
       </div>

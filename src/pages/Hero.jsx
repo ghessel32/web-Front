@@ -98,6 +98,7 @@ export default function WebsiteHealthChecker() {
 
   return (
     <div className="min-h-screen bg-[#08070E] flex items-center justify-center p-5 z-10">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="w-full max-w-2xl">
         <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl p-12">
           <div className="text-center mb-10">
@@ -158,7 +159,7 @@ export default function WebsiteHealthChecker() {
               className={`w-full py-4 font-bold rounded-xl transform transition-all shadow-lg cursor-pointer ${
                 isChecking
                   ? "bg-gray-500 text-gray-300 cursor-wait"
-                  : "bg-cyan-500 text-white hover:bg-cyan-600 hover:scale-[1.02] hover:shadow-cyan-500/50"
+                  : "bg-cyan-400 hover:bg-cyan-300 text-slate-900 hover:scale-[1.02] hover:shadow-cyan-500/50"
               }`}
             >
               {isChecking ? "Fetching..." : "Check Website Health"}

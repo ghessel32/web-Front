@@ -52,11 +52,9 @@ function SecurityThreat({ url }) {
       );
       setSecurityData(security);
 
-      const threat = await fetchWithCache(
-        `threat_${url}`,
-        `${apiUrl}/threat`,
-        { url }
-      );
+      const threat = await fetchWithCache(`threat_${url}`, `${apiUrl}/threat`, {
+        url,
+      });
       setThreatData(threat);
 
       setLoading(false);
@@ -147,19 +145,22 @@ function SecurityThreat({ url }) {
           }
 
           return (
-            <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-xl ${bgColor}`}>
-                    <Shield className={`w-8 h-8 ${iconColor}`} />
+            <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-start sm:items-center">
+                  <div className={`p-2 sm:p-3 rounded-xl ${bgColor}`}>
+                    <Shield className={`w-6 h-6 sm:w-8 sm:h-8 ${iconColor}`} />
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-2xl font-semibold text-white">
+                  <div className="ml-0 mt-2 sm:ml-4 sm:mt-0">
+                    <h3 className="text-lg sm:text-2xl font-semibold text-white">
                       {title}
                     </h3>
-                    <p className="text-sm text-gray-400 mt-1">{message}</p>
+                    <p className="text-sm sm:text-base text-gray-400 mt-1">
+                      {message}
+                    </p>
                   </div>
                 </div>
+
                 <StatusBadge status={badgeStatus}>
                   {badgeStatus === "success"
                     ? "Secure"

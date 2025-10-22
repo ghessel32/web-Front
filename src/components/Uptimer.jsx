@@ -5,7 +5,7 @@ function Uptimer({ url }) {
   const [uptimeData, setUptimeData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const apiUrl = import.meta.env.VITE_API_URL;
- 
+
   React.useEffect(() => {
     if (!url) return;
 
@@ -16,7 +16,6 @@ function Uptimer({ url }) {
       setUptimeData(JSON.parse(cached));
       setLoading(false);
     } else {
-      // Clear ALL previous uptime data before storing new one
       Object.keys(sessionStorage).forEach((key) => {
         if (key.startsWith("uptimeData_")) {
           sessionStorage.removeItem(key);
@@ -74,29 +73,29 @@ function Uptimer({ url }) {
   const uptimeShow = uptimeData.responseTime < 400;
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 space-y-6">
       {/* Summary */}
-      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300 mb-6">
-        <h3 className="text-xl font-semibold mb-6 text-white flex items-center">
-          <Clock className="w-5 h-5 mr-3 text-purple-400" />
+      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+        <h3 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-white flex items-center">
+          <Clock className="w-5 h-5 mr-2 sm:mr-3 text-purple-400" />
           Summary
         </h3>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {uptimeData.ok ? (
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200">
-              <div className="flex items-center">
-                <Clock className="w-5 h-5 text-green-400 mr-4" />
-                <span className="text-gray-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-3 sm:px-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200">
+              <div className="flex items-center mb-2 sm:mb-0">
+                <Clock className="w-5 h-5 text-green-400 mr-2 sm:mr-4" />
+                <span className="text-gray-200 text-sm sm:text-base">
                   Your website is up and running smoothly!
                 </span>
               </div>
               <StatusBadge status="success">Alive</StatusBadge>
             </div>
           ) : (
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200">
-              <div className="flex items-center">
-                <XCircle className="w-5 h-5 text-red-400 mr-4" />
-                <span className="text-gray-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-3 sm:px-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200">
+              <div className="flex items-center mb-2 sm:mb-0">
+                <XCircle className="w-5 h-5 text-red-400 mr-2 sm:mr-4" />
+                <span className="text-gray-200 text-sm sm:text-base">
                   There are issues with your website.
                 </span>
               </div>
@@ -107,15 +106,15 @@ function Uptimer({ url }) {
       </div>
 
       {/* Recent Uptime Card */}
-      <div className="flex items-center">
-        <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <Clock className="w-5 h-5 mr-3 text-green-400" />
+      <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+        <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center">
+            <Clock className="w-5 h-5 mr-2 sm:mr-3 text-green-400" />
             Recent Uptime
           </h3>
-          <div className="flex items-center justify-center h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
+          <div className="flex items-center justify-center h-28 sm:h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
             <div className="text-center">
-              <p className="text-4xl font-bold text-green-400">
+              <p className="text-2xl sm:text-4xl font-bold text-green-400">
                 {uptimeData.responseTime} ms
               </p>
             </div>

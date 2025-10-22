@@ -1,17 +1,78 @@
 import React, { useEffect, useState, useMemo } from "react";
-import {
-  Search,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-} from "lucide-react";
+import { Search, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 function SEOAnalysis({ url }) {
   const [seoData, setSeoData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
 
-  // ✅ Reusable utilities
+  useEffect(() => {
+    if (!url) return;
+
+    const storageKey = `seo_${url}`;
+    const cached = sessionStorage.getItem(storageKey);
+
+    if (cached) {
+      setSeoData(JSON.parse(cached));
+      setLoading(false);
+      return;
+    }
+
+    Object.keys(sessionStorage).forEach((key) => {
+      if (key.startsWith("seo_")) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
+    setLoading(true);
+    setError(false);
+
+    fetch(`${apiUrl}/seo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setSeoData(data);
+        sessionStorage.setItem(storageKey, JSON.stringify(data));
+      })
+      .catch((err) => {
+        console.error("Error fetching SEO data:", err);
+        setError(true);
+      })
+      .finally(() => setLoading(false));
+  }, [url, apiUrl]);
+
+  // Helper for extracting consistent data
+  const getData = (field) => {
+    const d = seoData?.[field];
+    if (d == null)
+      return { value: "Not found", status: "error", description: "" };
+
+    if (typeof d === "object")
+      return {
+        value: d.value || "Not found",
+        status: d.status || "warning",
+        description: d.description || "",
+      };
+
+    if (typeof d === "boolean")
+      return {
+        value: d ? "Yes" : "No",
+        status: d ? "success" : "error",
+        description: "",
+      };
+
+    return {
+      value: d,
+      status: d ? "success" : "warning",
+      description: "",
+    };
+  };
+
+  // Reusable utilities
   const StatusBadge = ({ status, children }) => {
     const colors = {
       success: "bg-green-500/20 text-green-400 border border-green-500/30",
@@ -20,7 +81,9 @@ function SEOAnalysis({ url }) {
     };
     return (
       <span
-        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm ${colors[status] || colors.error}`}
+        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm ${
+          colors[status] || colors.error
+        }`}
       >
         {children}
       </span>
@@ -61,63 +124,9 @@ function SEOAnalysis({ url }) {
     </div>
   );
 
-  // ✅ Fetch + caching
-  useEffect(() => {
-    if (!url) return;
-    const storageKey = `seo_${url}`;
-    const cached = sessionStorage.getItem(storageKey);
-
-    if (cached) return setSeoData(JSON.parse(cached));
-
-    setLoading(true);
-    fetch(`${apiUrl}/seo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setSeoData(data);
-        sessionStorage.setItem(storageKey, JSON.stringify(data));
-      })
-      .catch((err) => {
-        console.error("Error fetching SEO data:", err);
-        setSeoData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [url, apiUrl]);
-
-  // ✅ Helper for extracting consistent data
-  const getData = (field) => {
-    const d = seoData?.[field];
-    if (d == null)
-      return { value: "Not found", status: "error", description: "" };
-
-    if (typeof d === "object")
-      return {
-        value: d.value || "Not found",
-        status: d.status || "warning",
-        description: d.description || "",
-      };
-
-    if (typeof d === "boolean")
-      return {
-        value: d ? "Yes" : "No",
-        status: d ? "success" : "error",
-        description: "",
-      };
-
-    return {
-      value: d,
-      status: d ? "success" : "warning",
-      description: "",
-    };
-  };
-
-  // ✅ Derived values memoized (no re-calculation each render)
+  // Derived values memoized (no re-calculation each render)
   const { seoItems, firstMessage, secondMessage } = useMemo(() => {
-    if (!seoData)
-      return { seoItems: [], firstMessage: "", secondMessage: "" };
+    if (!seoData) return { seoItems: [], firstMessage: "", secondMessage: "" };
 
     const fields = [
       ["Title Tag", "title"],
@@ -158,7 +167,7 @@ function SEOAnalysis({ url }) {
     return { seoItems: items, firstMessage: first, secondMessage: second };
   }, [seoData]);
 
-  // ✅ UI states
+  // UI states
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400">
@@ -166,54 +175,55 @@ function SEOAnalysis({ url }) {
       </div>
     );
 
-  if (!seoData)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-400">
-        Failed to fetch SEO data.
-      </div>
-    );
+  if (error) return <div>Failed to fetch SEO data.</div>;
+
+  if (!seoData) return null;
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Summary Box */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-              <CheckCircle className="w-8 h-8 text-green-400" />
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4 sm:mb-6">
+            <div className="p-2 sm:p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-400" />
             </div>
-            <h3 className="ml-4 text-2xl font-semibold text-white flex-1">
+            <h3 className="mt-2 sm:mt-0 sm:ml-4 text-lg sm:text-2xl font-semibold text-white flex-1">
               SEO Health Check
             </h3>
           </div>
 
-          <div className="space-y-4">
-            <div className="py-3 px-4 rounded-xl bg-white/5 flex items-center">
-              <CheckCircle className="w-5 h-5 mr-1 text-green-400" />
-              <p className="ml-3 text-gray-200">{firstMessage}</p>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="py-2 px-3 sm:py-3 sm:px-4 rounded-xl bg-white/5 flex items-center">
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
+              <p className="ml-2 sm:ml-3 text-gray-200 text-sm sm:text-base">
+                {firstMessage}
+              </p>
             </div>
 
             {secondMessage && (
-              <div className="py-3 px-4 rounded-xl bg-white/5 flex items-center">
-                <XCircle className="w-5 h-5 mr-1 text-red-400" />
-                <p className="ml-3 text-gray-200">{secondMessage}</p>
+              <div className="py-2 px-3 sm:py-3 sm:px-4 rounded-xl bg-white/5 flex items-center">
+                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+                <p className="ml-2 sm:ml-3 text-gray-200 text-sm sm:text-base">
+                  {secondMessage}
+                </p>
               </div>
             )}
           </div>
         </div>
 
         {/* Detailed Results */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <div className="flex items-center mb-6">
-            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-              <Search className="w-6 h-6 text-purple-400" />
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4 sm:mb-6">
+            <div className="p-2 sm:p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+              <Search className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
             </div>
-            <h3 className="ml-4 text-lg font-semibold text-white">
+            <h3 className="mt-2 sm:mt-0 sm:ml-4 text-base sm:text-lg font-semibold text-white">
               Detailed Results
             </h3>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {seoItems.map((item, index) => (
               <SEOItem key={index} {...item} />
             ))}

@@ -160,7 +160,7 @@ const Details = () => {
             {dataLoaded && (
               <button
                 onClick={handleGenerateReport}
-                className="px-4 py-2 rounded-md mt-4 bg-cyan-500 hover:bg-cyan-600 text-white cursor-pointer"
+                className="px-4 py-2 rounded-md mt-4  bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold cursor-pointer"
               >
                 Generate Report
               </button>

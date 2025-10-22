@@ -13,14 +13,16 @@ import Details from "./pages/Details.jsx";
 import Hero from "./pages/Hero.jsx";
 import Form from "./pages/Form.jsx";
 import CardReport from "./pages/CardReport.jsx";
+import Home from "./pages/Home.jsx";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/" element={<Layout />}>
-      <Route index element={<Hero />} />
+      <Route index element={<Home />} />
       <Route path="details" element={<Details />} />
-      <Route path="form" element={<Form />} />
+      <Route path="check" element={<Hero />} />
       <Route path="report" element={<CardReport />} />
+      <Route path="form" element={<Form />} />
     </Route>
   )
 );

@@ -1,31 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { Shield, CheckCircle, Lock, AlertTriangle } from "lucide-react";
+import {
+  Shield,
+  CheckCircle,
+  Lock,
+  AlertTriangle,
+  Globe,
+  TrendingUp,
+} from "lucide-react";
+import ScoreCircle from "./ScoreCircle.jsx";
+
+const SECURITY_WEIGHTS = {
+  httpsEnabled: 20,
+  hstsHeader: 15,
+  contentSecurityPolicy: 15,
+  xFrameOptions: 10,
+};
+
+const THREAT_WEIGHT = 40;
 
 function SecurityThreat({ url }) {
   const [loading, setLoading] = useState(true);
   const [securityData, setSecurityData] = useState({});
   const [threatData, setThreatData] = useState({});
   const [error, setError] = useState(null);
-  const apiUrl = import.meta.env.VITE_API_URL;
 
-  const fetchWithCache = async (key, endpoint, payload) => {
+  const fetchWithCache = async (key) => {
     const cached = sessionStorage.getItem(key);
-    if (cached) return JSON.parse(cached); // ✅ Use cache if available
-
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      sessionStorage.setItem(key, JSON.stringify(data)); // ✅ Save to cache
-      return data;
-    } catch (err) {
-      console.error(err);
-      setError("Failed to fetch data");
-      return {};
-    }
+    if (cached) return JSON.parse(cached);
   };
 
   useEffect(() => {
@@ -33,49 +34,138 @@ function SecurityThreat({ url }) {
     setLoading(true);
     setError(null);
 
-    // 🧹 Clear cache of any previous website (different from current)
-    Object.keys(sessionStorage).forEach((key) => {
-      if (
-        (key.startsWith("security_") || key.startsWith("threat_")) &&
-        !key.endsWith(url)
-      ) {
-        sessionStorage.removeItem(key);
-      }
-    });
-
     const fetchData = async () => {
-      // ✅ These functions will use cache if already present
-      const security = await fetchWithCache(
-        `security_${url}`,
-        `${apiUrl}/security`,
-        { url }
-      );
-      setSecurityData(security);
-
-      const threat = await fetchWithCache(`threat_${url}`, `${apiUrl}/threat`, {
-        url,
-      });
-      setThreatData(threat);
-
+      const security = await fetchWithCache(`security_${url}`);
+      setSecurityData(security || {});
+      const threat = await fetchWithCache(`threat_${url}`);
+      setThreatData(threat || {});
       setLoading(false);
     };
 
     fetchData();
   }, [url]);
 
-  const StatusBadge = ({ status, children }) => (
-    <span
-      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm ${
-        status === "success"
-          ? "bg-green-500/20 text-green-400 border border-green-500/30"
-          : status === "warning"
-          ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-          : "bg-red-500/20 text-red-400 border border-red-500/30"
-      }`}
-    >
-      {children}
-    </span>
-  );
+  // Calculate security score and missing headers
+  const calculateSecurityScore = () => {
+    let score = 0;
+    const missing = [];
+
+    if (securityData.httpsEnabled || securityData.https_enabled) {
+      score += SECURITY_WEIGHTS.httpsEnabled;
+    } else {
+      missing.push({ name: "HTTPS", points: SECURITY_WEIGHTS.httpsEnabled });
+    }
+
+    if (securityData.hstsHeader || securityData.hsts_header) {
+      score += SECURITY_WEIGHTS.hstsHeader;
+    } else {
+      missing.push({
+        name: "HSTS Header",
+        points: SECURITY_WEIGHTS.hstsHeader,
+      });
+    }
+
+    if (
+      securityData.contentSecurityPolicy ||
+      securityData.content_security_policy
+    ) {
+      score += SECURITY_WEIGHTS.contentSecurityPolicy;
+    } else {
+      missing.push({
+        name: "Content Security Policy",
+        points: SECURITY_WEIGHTS.contentSecurityPolicy,
+      });
+    }
+
+    if (securityData.xFrameOptions || securityData.x_frame_options) {
+      score += SECURITY_WEIGHTS.xFrameOptions;
+    } else {
+      missing.push({
+        name: "X-Frame-Options",
+        points: SECURITY_WEIGHTS.xFrameOptions,
+      });
+    }
+
+    return { score, missing };
+  };
+
+  // Calculate threat score
+  const calculateThreatScore = () => {
+    if (!threatData) return 0;
+    const isSafe = threatData.safe === true;
+    return isSafe ? THREAT_WEIGHT : 0;
+  };
+
+  const securityScore = calculateSecurityScore();
+  const threatScore = calculateThreatScore();
+  const totalScore = Math.round(securityScore.score + threatScore);
+
+  //Get summary msgs
+  const getSummaryMessages = () => {
+    const messages = [];
+    const isThreatSafe = threatData.safe === true;
+    const missingHeaders = securityScore.missing;
+
+    // Calculate total points that can be earned
+    const totalMissingPoints = missingHeaders.reduce(
+      (sum, item) => sum + item.points,
+      0
+    );
+    const threatPoints = !isThreatSafe ? THREAT_WEIGHT : 0;
+    const totalEarnablePoints = totalMissingPoints + threatPoints;
+
+    // Fix message on top (only if there are issues)
+    if (totalEarnablePoints > 0) {
+      messages.push({
+        type: "info",
+        icon: TrendingUp,
+        text: `Fix security issues and earn ${totalEarnablePoints} points`,
+      });
+    }
+
+    // Safe Browsing Status
+    if (isThreatSafe) {
+      messages.push({
+        type: "success",
+        icon: CheckCircle,
+        text: "Safe Browsing: No threats detected - your website is clean",
+      });
+    } else {
+      const issues = [];
+      if (threatData.malware) issues.push("malware");
+      if (threatData.phishing) issues.push("phishing");
+      if (threatData.unwanted) issues.push("unwanted programs");
+
+      messages.push({
+        type: "error",
+        icon: AlertTriangle,
+        text: `Safe Browsing: Threats detected (${issues.join(", ")})`,
+      });
+    }
+
+    // Security Headers Status
+    if (missingHeaders.length === 0) {
+      messages.push({
+        type: "success",
+        icon: CheckCircle,
+        text: "Security Headers: All headers properly configured",
+      });
+    } else {
+      const headerNames = missingHeaders.map((h) => h.name).join(", ");
+
+      messages.push({
+        type: "warning",
+        icon: AlertTriangle,
+        text: `Security Headers: Missing ${missingHeaders.length} header${
+          missingHeaders.length > 1 ? "s" : ""
+        } (${headerNames})`,
+      });
+    }
+
+    return messages;
+  };
+
+  const summaryMessages = getSummaryMessages();
 
   const InfoRow = ({ icon: Icon, label, status, statusText }) => (
     <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200">
@@ -91,7 +181,17 @@ function SecurityThreat({ url }) {
         />
         <span className="text-sm text-gray-200">{label}</span>
       </div>
-      <StatusBadge status={status}>{statusText}</StatusBadge>
+      <span
+        className={`text-sm font-medium ${
+          status === "success"
+            ? "text-green-400"
+            : status === "warning"
+            ? "text-yellow-400"
+            : "text-red-400"
+        }`}
+      >
+        {statusText}
+      </span>
     </div>
   );
 
@@ -111,67 +211,63 @@ function SecurityThreat({ url }) {
     );
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Summary Message */}
-        {(() => {
-          const missingHeaders = [
-            !securityData.hstsHeader,
-            !securityData.xFrameOptions,
-            !securityData.contentSecurityPolicy,
-          ].filter(Boolean).length;
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Score Circle */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex justify-center">
+            <ScoreCircle
+              score={totalScore}
+              size="medium"
+              showLabel={true}
+              label="out of 100"
+            />
+          </div>
+        </div>
 
-          let title = "Your Website is Safe";
-          let message =
-            "No security threats detected. All checks passed successfully.";
-          let badgeStatus = "success";
-          let iconColor = "text-green-400";
-          let bgColor = "bg-green-500/10 border-green-500/20";
-
-          if (missingHeaders === 1 || missingHeaders === 2) {
-            title = "Needs Improvement";
-            message =
-              "Some security headers are missing. Improve to enhance protection.";
-            badgeStatus = "warning";
-            iconColor = "text-yellow-400";
-            bgColor = "bg-yellow-500/10 border-yellow-500/20";
-          } else if (missingHeaders >= 3) {
-            title = "Your Website is Unsafe";
-            message =
-              "Critical security headers are missing. Immediate attention required.";
-            badgeStatus = "error";
-            iconColor = "text-red-400";
-            bgColor = "bg-red-500/10 border-red-500/20";
-          }
-
-          return (
-            <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-                <div className="flex items-start sm:items-center">
-                  <div className={`p-2 sm:p-3 rounded-xl ${bgColor}`}>
-                    <Shield className={`w-6 h-6 sm:w-8 sm:h-8 ${iconColor}`} />
-                  </div>
-                  <div className="ml-0 mt-2 sm:ml-4 sm:mt-0">
-                    <h3 className="text-lg sm:text-2xl font-semibold text-white">
-                      {title}
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-400 mt-1">
-                      {message}
-                    </p>
-                  </div>
-                </div>
-
-                <StatusBadge status={badgeStatus}>
-                  {badgeStatus === "success"
-                    ? "Secure"
-                    : badgeStatus === "warning"
-                    ? "Needs Improvement"
-                    : "Unsafe"}
-                </StatusBadge>
-              </div>
+        {/* Summary Section */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex items-center mb-5">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30">
+              <Globe className="w-6 h-6 text-blue-400" />
             </div>
-          );
-        })()}
+            <h3 className="ml-3 text-lg sm:text-xl font-semibold text-white">
+              Security Summary
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {summaryMessages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex items-start gap-3 px-4 py-3 rounded-xl border transition-all duration-200 ${
+                  msg.type === "success"
+                    ? "bg-green-500/10 border-green-500/30 hover:bg-green-500/15"
+                    : msg.type === "error"
+                    ? "bg-red-500/10 border-red-500/30 hover:bg-red-500/15"
+                    : msg.type === "warning"
+                    ? "bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/15"
+                    : "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/15  font-bold"
+                }`}
+              >
+                <msg.icon
+                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                    msg.type === "success"
+                      ? "text-green-400"
+                      : msg.type === "error"
+                      ? "text-red-400"
+                      : msg.type === "warning"
+                      ? "text-yellow-400"
+                      : "text-blue-400"
+                  }`}
+                />
+                <span className="text-sm text-gray-200 leading-relaxed">
+                  {msg.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Security Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -211,13 +307,6 @@ function SecurityThreat({ url }) {
                 statusText={threatData.unwanted ? "Detected" : "Clean"}
               />
             </div>
-            <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
-              <p className="text-sm text-gray-300 text-center">
-                {threatData.safe
-                  ? "✓ All browsing safety checks passed"
-                  : "⚠ Potential threat detected"}
-              </p>
-            </div>
           </div>
 
           {/* HTTPS & Security Headers */}
@@ -232,44 +321,80 @@ function SecurityThreat({ url }) {
             </div>
             <div className="space-y-3">
               <InfoRow
-                icon={CheckCircle}
+                icon={
+                  securityData.httpsEnabled || securityData.https_enabled
+                    ? CheckCircle
+                    : AlertTriangle
+                }
                 label="HTTPS Enabled"
-                status={securityData.httpsEnabled ? "success" : "error"}
-                statusText={securityData.httpsEnabled ? "Active" : "Inactive"}
-              />
-              <InfoRow
-                icon={CheckCircle}
-                label="Strict-Transport-Security"
-                status={securityData.hstsHeader ? "success" : "error"}
-                statusText={securityData.hstsHeader ? "Enabled" : "Missing"}
-              />
-              <InfoRow
-                icon={CheckCircle}
-                label="X-Frame-Options"
-                status={securityData.xFrameOptions ? "success" : "error"}
-                statusText={securityData.xFrameOptions ? "Enabled" : "Missing"}
+                status={
+                  securityData.httpsEnabled || securityData.https_enabled
+                    ? "success"
+                    : "error"
+                }
+                statusText={
+                  securityData.httpsEnabled || securityData.https_enabled
+                    ? "Active"
+                    : "Inactive"
+                }
               />
               <InfoRow
                 icon={
-                  securityData.contentSecurityPolicy
+                  securityData.hstsHeader || securityData.hsts_header
+                    ? CheckCircle
+                    : AlertTriangle
+                }
+                label="Strict-Transport-Security"
+                status={
+                  securityData.hstsHeader || securityData.hsts_header
+                    ? "success"
+                    : "error"
+                }
+                statusText={
+                  securityData.hstsHeader || securityData.hsts_header
+                    ? "Enabled"
+                    : "Missing"
+                }
+              />
+              <InfoRow
+                icon={
+                  securityData.xFrameOptions || securityData.x_frame_options
+                    ? CheckCircle
+                    : AlertTriangle
+                }
+                label="X-Frame-Options"
+                status={
+                  securityData.xFrameOptions || securityData.x_frame_options
+                    ? "success"
+                    : "error"
+                }
+                statusText={
+                  securityData.xFrameOptions || securityData.x_frame_options
+                    ? "Enabled"
+                    : "Missing"
+                }
+              />
+              <InfoRow
+                icon={
+                  securityData.contentSecurityPolicy ||
+                  securityData.content_security_policy
                     ? CheckCircle
                     : AlertTriangle
                 }
                 label="Content-Security-Policy"
                 status={
-                  securityData.contentSecurityPolicy ? "success" : "warning"
+                  securityData.contentSecurityPolicy ||
+                  securityData.content_security_policy
+                    ? "success"
+                    : "warning"
                 }
                 statusText={
-                  securityData.contentSecurityPolicy ? "Enabled" : "Missing"
+                  securityData.contentSecurityPolicy ||
+                  securityData.content_security_policy
+                    ? "Enabled"
+                    : "Missing"
                 }
               />
-            </div>
-            <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
-              <p className="text-sm text-gray-300 text-center">
-                {securityData.contentSecurityPolicy
-                  ? "✓ All headers present"
-                  : "⚠ Consider adding CSP header"}
-              </p>
             </div>
           </div>
         </div>

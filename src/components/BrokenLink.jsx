@@ -5,103 +5,137 @@ import {
   AlertCircle,
   Link as LinkIcon,
   CheckCircle,
+  TrendingUp,
 } from "lucide-react";
+import ScoreCircle from "./ScoreCircle";
 
 function BrokenLinks({ url }) {
-  const [brokenLinks, setBrokenLinks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [brokenCount, setBrokenCount] = useState(0);
+  const [brokenLinks, setBrokenLinks] = useState([]); // URLs
+  const [totalLinks, setTotalLinks] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const apiUrl = import.meta.env.VITE_API_URL;
-
-  // ✅ Unified fetch + cache helper
-  const fetchWithCache = async (key, endpoint, payload) => {
-    const cached = sessionStorage.getItem(key);
-    if (cached) return JSON.parse(cached);
-
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      sessionStorage.setItem(key, JSON.stringify(data));
-      return data;
-    } catch (err) {
-      console.error("BrokenLinks API error:", err);
-      setError("Failed to fetch broken links.");
-      return null;
-    }
-  };
 
   useEffect(() => {
     if (!url) return;
 
     const storageKey = `brokenLinks_${url}`;
-    setLoading(true);
-    setError(null);
+    const cached = sessionStorage.getItem(storageKey);
 
-    // 🧹 Remove old caches from previous sites, keep current
-    Object.keys(sessionStorage).forEach((key) => {
-      if (key.startsWith("brokenLinks_") && key !== storageKey) {
-        sessionStorage.removeItem(key);
-      }
-    });
-
-    const fetchLinks = async () => {
-      const data = await fetchWithCache(
-        storageKey,
-        `${apiUrl}/broken-links`,
-        { url }
-      );
-
-      setBrokenLinks(data?.links || []);
+    if (cached) {
+      const data = JSON.parse(cached);
+      setBrokenCount(data.brokenLinks || 0);
+      setBrokenLinks(data.links || []);
+      setTotalLinks(data.totalLinks || 0);
       setLoading(false);
-    };
-
-    fetchLinks();
+      setError(null);
+    } else {
+      console.log(`No data found in sessionStorage for ${url}`);
+      setBrokenCount(0);
+      setBrokenLinks([]);
+      setTotalLinks(0);
+      setLoading(false);
+      setError("No data available");
+    }
   }, [url]);
 
-  // 🔹 Status summary component
+  // ✅ Calculate score
+  const calculateBrokenLinksScore = (total, broken) => {
+    if (total === 0) return { totalScore: 100, details: "No links found" };
+
+    const score = 100 * (1 - broken / total);
+    return {
+      totalScore: Math.floor(score),
+      details: `${broken} broken links out of ${total}`,
+    };
+  };
+
+  const { totalScore, details } = calculateBrokenLinksScore(
+    totalLinks,
+    brokenCount
+  );
+
+  // ✅ Summary
   const SummaryCard = () => (
     <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-      <div className="flex items-center">
+      {/* Header: icon + title */}
+      <div className="flex items-center mb-4">
         <div
           className={`p-3 rounded-xl ${
-            brokenLinks.length > 0
+            brokenCount > 0
               ? "bg-red-500/10 border border-red-500/20"
               : "bg-green-500/10 border border-green-500/20"
           }`}
         >
           <AlertCircle
             className={`w-6 h-6 ${
-              brokenLinks.length > 0 ? "text-red-400" : "text-green-400"
+              brokenCount > 0 ? "text-red-400" : "text-green-400"
             }`}
           />
         </div>
-        <div className="ml-4">
-          <h3 className="text-xl font-semibold text-white">
+        <h3 className="ml-3 text-lg font-semibold text-white">
+          {loading ? "Checking Links..." : "Broken Links Summary"}
+        </h3>
+      </div>
+      {/* Optional note */}
+      {!loading && brokenCount > 0 && (
+        <div className="flex items-start py-4 px-4 rounded-xl bg-blue-500/10 border border-blue-500/20 mb-2">
+          <TrendingUp className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <span className="text-blue-300 text-sm font-medium">
+              🔒 Fix broken links to improve your score by{" "}
+              {Math.round(100 - totalScore)} points.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Status list */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-lg border border-white/10">
+          <span className="flex items-center gap-2 text-gray-200">
+            <LinkIcon className="w-4 h-4 text-gray-400" />
+            <span>Total Links</span>
+          </span>
+          <span className="text-gray-400">{totalLinks}</span>
+        </div>
+
+        <div className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-lg border border-white/10">
+          <span className="flex items-center gap-2 text-gray-200">
+            <XCircle className="w-4 h-4 text-gray-400" />
+            <span>Broken Links</span>
+          </span>
+          <span
+            className={`font-medium ${
+              brokenCount > 0 ? "text-red-400" : "text-green-400"
+            }`}
+          >
+            {brokenCount > 0 ? `${brokenCount} found` : "None"}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-lg border border-white/10">
+          <span className="flex items-center gap-2 text-gray-200">
+            <CheckCircle className="w-4 h-4 text-gray-400" />
+            <span>Status</span>
+          </span>
+          <span
+            className={`font-medium ${
+              brokenCount > 0 ? "text-red-400" : "text-green-400"
+            }`}
+          >
             {loading
-              ? "Checking Links..."
-              : brokenLinks.length > 0
-              ? "Broken Links Detected"
-              : "No Broken Links"}
-          </h3>
-          <p className="text-sm text-gray-400 mt-1">
-            {loading
-              ? "Please wait while we scan your website..."
-              : brokenLinks.length > 0
-              ? `Found ${brokenLinks.length} broken link${
-                  brokenLinks.length > 1 ? "s" : ""
-                } on your website.`
-              : "All links on your website are working perfectly!"}
-          </p>
+              ? "Scanning..."
+              : brokenCount > 0
+              ? "Needs Attention"
+              : "Healthy"}
+          </span>
         </div>
       </div>
     </div>
   );
 
-  // 🔹 Broken link list card
+  // ✅ Broken links list
   const BrokenLinksList = () => (
     <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
       <div className="flex items-center mb-6">
@@ -113,28 +147,31 @@ function BrokenLinks({ url }) {
         </h3>
       </div>
 
-      <div className="space-y-4">
-        {brokenLinks.map((link, index) => (
-          <div
-            key={index}
-            className="p-5 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 border border-red-500/20 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <XCircle className="w-5 h-5 text-red-400" />
-              <p className="text-sm text-gray-300 font-mono break-all">
-                {link}
-              </p>
+      {brokenLinks.length > 0 ? (
+        <div className="space-y-4">
+          {brokenLinks.map((link, index) => (
+            <div
+              key={index}
+              className="p-5 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 border border-red-500/20 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-red-400" />
+                <p className="text-sm text-gray-300 font-mono break-all">
+                  {link}
+                </p>
+              </div>
+              <a href={link} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 text-gray-500 hover:text-gray-300 transition" />
+              </a>
             </div>
-            <a href={link} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4 text-gray-500 hover:text-gray-300 transition" />
-            </a>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-400 text-center">No broken link URLs found.</p>
+      )}
     </div>
   );
 
-  // 🔹 No broken links card
   const NoBrokenLinksCard = () => (
     <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 flex items-center justify-center text-center">
       <div className="text-center">
@@ -151,9 +188,23 @@ function BrokenLinks({ url }) {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Score Circle */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex justify-center">
+            <ScoreCircle
+              score={totalScore}
+              size="medium"
+              showLabel={true}
+              label="out of 100"
+            />
+          </div>
+        </div>
+
+        {/* Summary */}
         <SummaryCard />
 
+        {/* Results */}
         {error ? (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-center">
             {error}
@@ -162,7 +213,7 @@ function BrokenLinks({ url }) {
           <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 flex items-center justify-center text-center animate-pulse">
             <p className="text-gray-400">Scanning for broken links...</p>
           </div>
-        ) : brokenLinks.length > 0 ? (
+        ) : brokenCount > 0 ? (
           <BrokenLinksList />
         ) : (
           <NoBrokenLinksCard />

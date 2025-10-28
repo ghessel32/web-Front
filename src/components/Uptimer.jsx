@@ -1,14 +1,12 @@
 import React from "react";
 import { Clock, XCircle } from "lucide-react";
+import ScoreCircle from "./ScoreCircle";
 
 function Uptimer({ url }) {
   const [uptimeData, setUptimeData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
-  const apiUrl = import.meta.env.VITE_API_URL;
 
   React.useEffect(() => {
-    if (!url) return;
-
     const storageKey = `uptimeData_${url}`;
     const cached = sessionStorage.getItem(storageKey);
 
@@ -16,27 +14,33 @@ function Uptimer({ url }) {
       setUptimeData(JSON.parse(cached));
       setLoading(false);
     } else {
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith("uptimeData_")) {
-          sessionStorage.removeItem(key);
-        }
-      });
-
-      setLoading(true);
-      fetch(`${apiUrl}/check-uptime`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      })
-        .then((res) => res.json())
-        .then((result) => {
-          setUptimeData(result);
-          sessionStorage.setItem(storageKey, JSON.stringify(result));
-        })
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false));
+      console.log(`No data found in sessionStorage for ${url}`);
+      setUptimeData(null);
     }
   }, [url]);
+
+  const calculateScore = () => {
+    if (!uptimeData) return 0;
+
+    let score = 0;
+
+    // Uptime score: 70 points if up, 0 if down
+    if (uptimeData.ok) {
+      score += 70;
+    }
+
+    // Response time score: 30 points max
+    const responseTime = uptimeData.responseTime;
+    if (responseTime < 500) {
+      score += 30;
+    } else if (responseTime < 1500) {
+      score += 20;
+    } else {
+      score += 10;
+    }
+
+    return score;
+  };
 
   const StatusBadge = ({ status, children }) => {
     const colors = {
@@ -70,10 +74,21 @@ function Uptimer({ url }) {
       </div>
     );
 
-  const uptimeShow = uptimeData.responseTime < 400;
+  const totalScore = calculateScore();
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8 space-y-6">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
+      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+        <div className="flex justify-center">
+          <ScoreCircle 
+            score={totalScore} 
+            size="medium"
+            showLabel={true}
+            label="out of 100"
+          />
+        </div>
+      </div>
+
       {/* Summary */}
       <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
         <h3 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-white flex items-center">
@@ -105,19 +120,17 @@ function Uptimer({ url }) {
         </div>
       </div>
 
-      {/* Recent Uptime Card */}
-      <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
-        <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center">
-            <Clock className="w-5 h-5 mr-2 sm:mr-3 text-green-400" />
-            Recent Uptime
-          </h3>
-          <div className="flex items-center justify-center h-28 sm:h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
-            <div className="text-center">
-              <p className="text-2xl sm:text-4xl font-bold text-green-400">
-                {uptimeData.responseTime} ms
-              </p>
-            </div>
+      {/* Response Time Card */}
+      <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+        <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center">
+          <Clock className="w-5 h-5 mr-2 sm:mr-3 text-green-400" />
+          Response Time
+        </h3>
+        <div className="flex items-center justify-center h-28 sm:h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
+          <div className="text-center">
+            <p className="text-2xl sm:text-4xl font-bold text-green-400">
+              {uptimeData.responseTime} ms
+            </p>
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@ function Header() {
   const navigate = useNavigate();
 
   return (
-    <header className="bg-[#08070E] border-b border-gray-700 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 sticky top-0 z-50">
+    <header className="border-b border-gray-700 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 sticky top-0 z-50 w-full mt-0">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 sm:gap-4">

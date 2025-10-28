@@ -9,8 +9,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-
 import Uptimer from "../components/Uptimer.jsx";
 import SSLDomain from "../components/Ssldomain.jsx";
 import BrokenLinks from "../components/BrokenLink.jsx";
@@ -22,71 +20,18 @@ const Details = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [dataLoaded, setDataLoaded] = useState(false);
   const location = useLocation();
-  const { websiteData } = location.state || {};
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const checkData = () => {
-      const url = websiteData?.url;
-      if (!url) return;
-
-      const hasBrokenLinks = sessionStorage.getItem(`brokenLinks_${url}`);
-      const hasSpeedData = sessionStorage.getItem(`speedData_${url}`);
-
-      setDataLoaded(!!(hasBrokenLinks && hasSpeedData));
-    };
-
-    checkData(); // initial check
-    window.addEventListener("dataUpdated", checkData);
-
-    return () => window.removeEventListener("dataUpdated", checkData);
-  }, [websiteData?.url]);
-
-  useEffect(() => {
-    const addWebsite = async () => {
-      const name = websiteData?.name;
-      const url = websiteData?.url;
-
-      if (!name || !url) return; // skip if missing
-
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/add-website`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ name, url }),
-          }
-        );
-
-        const result = await response.json();
-
-        if (response.ok) {
-          console.log("Website added successfully:", result);
-        } else {
-          console.error("Failed to add website:", result);
-        }
-      } catch (error) {
-        console.error("Error calling add-website API:", error);
-      }
-    };
-
-    addWebsite();
-  }, [websiteData]);
+  const { name, url } = location.state || {};
 
   const tabs = [
     { id: "overview", label: "Uptime", icon: Globe },
     { id: "speed", label: "Speed", icon: Activity },
-    { id: "ssl", label: "SSL/Cert", icon: Lock },
+    { id: "ssl", label: "SSL&Domain", icon: Lock },
     { id: "seo", label: "SEO", icon: Search },
     { id: "security", label: "Security", icon: Shield },
     { id: "broken", label: "Broken Links", icon: Link2Off },
   ];
 
   const renderTabContent = () => {
-    const url = websiteData?.url;
     if (!url)
       return (
         <div className="text-center text-gray-400 py-10">No URL provided.</div>
@@ -114,25 +59,17 @@ const Details = () => {
     }
   };
 
-  const handleGenerateReport = () => {
-    navigate(
-      `/report?url=${encodeURIComponent(
-        websiteData.url
-      )}&name=${encodeURIComponent(websiteData.name)}`
-    );
-  };
-
   return (
     <div className="min-h-screen bg-[#08070E] text-gray-100 p-4">
       {/* --- Top Section: Website Info --- */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-start space-x-4">
           {/* Logo */}
-          {websiteData?.url && (
+          {url && (
             <div className="flex-shrink-0">
               <img
-                src={`https://www.google.com/s2/favicons?domain=${websiteData.url}&sz=128`}
-                alt={`${websiteData?.name} logo`}
+                src={`https://www.google.com/s2/favicons?domain=${url}&sz=128`}
+                alt={`${name || "My website"} logo`}
                 className="w-16 h-16 rounded-xl bg-white/5 p-2 border border-white/10"
                 onError={(e) => {
                   e.target.style.display = "none";
@@ -144,27 +81,18 @@ const Details = () => {
           {/* Website Info */}
           <div className="flex flex-col">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-2">
-              {websiteData?.name}
+              {name || "My web"}
             </h2>
 
             <a
-              href={websiteData?.url}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center space-x-2 text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200"
             >
               <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
-              <span className="font-medium">{websiteData?.url}</span>
+              <span className="font-medium">{url}</span>
             </a>
-
-            {dataLoaded && (
-              <button
-                onClick={handleGenerateReport}
-                className="px-4 py-2 rounded-md mt-4  bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold cursor-pointer"
-              >
-                Generate Report
-              </button>
-            )}
           </div>
         </div>
       </div>

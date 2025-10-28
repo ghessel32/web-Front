@@ -5,59 +5,89 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
+  TrendingUp,
 } from "lucide-react";
+import ScoreCircle from "./ScoreCircle";
+
+// Score calculation constants
+const SSL_WEIGHT = 50;
+const DOMAIN_VALIDITY_WEIGHT = 30;
+const DOMAIN_PROTECTION_WEIGHT = 20;
+const VALID_SSL_KEYWORDS = ["VALID", "ACTIVE", "OK", "SECURE"];
+
+// Calculate SSL score based on status
+function calculateSSLScore(data) {
+  const status = (data?.Status || data?.status || "").toUpperCase();
+  const hasValidKeyword = VALID_SSL_KEYWORDS.some((keyword) =>
+    status.includes(keyword)
+  );
+  const score = hasValidKeyword ? SSL_WEIGHT : 0;
+  return Math.round(score * 100) / 100;
+}
+
+// Calculate domain score based on protection
+function calculateDomainScore(data) {
+  let score = 0;
+  const daysLeft = data?.daysLeft || data?.days_left || 0;
+  if (daysLeft > 2) {
+    score += DOMAIN_VALIDITY_WEIGHT;
+  }
+  const isProtected = data?.isProtected || data?.is_protected || false;
+  if (isProtected) {
+    score += DOMAIN_PROTECTION_WEIGHT;
+  }
+  return Math.round(score * 100) / 100;
+}
+
+// Generate improvement suggestions
+function getImprovementSuggestions(sslScore, domainScore, sslData, domainData) {
+  const suggestions = [];
+  let potentialPoints = 0;
+
+  // Check SSL
+  if (sslScore < SSL_WEIGHT) {
+    suggestions.push("Enable or renew SSL certificate");
+    potentialPoints += SSL_WEIGHT - sslScore;
+  }
+
+  // Check domain validity
+  const daysLeft = domainData?.daysLeft || 0;
+  if (daysLeft <= 2) {
+    suggestions.push("Renew your domain");
+    potentialPoints += DOMAIN_VALIDITY_WEIGHT;
+  }
+
+  // Check domain protection
+  const isProtected = domainData?.isProtected || false;
+  if (!isProtected) {
+    suggestions.push("Enable server-side domain protection");
+    potentialPoints += DOMAIN_PROTECTION_WEIGHT;
+  }
+
+  return { suggestions, potentialPoints };
+}
 
 function SSLDomain({ url }) {
   const [sslData, setSslData] = useState(null);
   const [domainData, setDomainData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const apiUrl = import.meta.env.VITE_API_URL;
 
   const domain = url ? new URL(url).hostname : null;
 
-  const fetchWithCache = async (key, endpoint, payload) => {
+  const fetchWithCache = async (key) => {
     const cached = sessionStorage.getItem(key);
     if (cached) return JSON.parse(cached);
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      sessionStorage.setItem(key, JSON.stringify(data));
-      return data;
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
   };
 
   useEffect(() => {
     if (!url) return;
-
     setLoading(true);
     setError(null);
-
-    // 🧹 Remove old cache entries for previous URLs/domains
-    Object.keys(sessionStorage).forEach((key) => {
-      if (
-        (key.startsWith("ssl_") && key !== `ssl_${url}`) ||
-        (key.startsWith("domain_") && key !== `domain_${domain}`)
-      ) {
-        sessionStorage.removeItem(key);
-      }
-    });
-
     const fetchData = async () => {
-      const ssl = await fetchWithCache(`ssl_${url}`, `${apiUrl}/ssl`, { url });
+      const ssl = await fetchWithCache(`ssl_${url}`);
       setSslData(ssl || {});
-      const domainInfo = await fetchWithCache(
-        `domain_${domain}`,
-        `${apiUrl}/domain`,
-        { domain }
-      );
+      const domainInfo = await fetchWithCache(`domain_${domain}`);
       setDomainData(domainInfo || {});
       setLoading(false);
     };
@@ -90,6 +120,19 @@ function SSLDomain({ url }) {
     );
   }
 
+  // Calculate scores
+  const sslScore = calculateSSLScore(sslData);
+  const domainScore = calculateDomainScore(domainData);
+  const totalScore = Math.round(sslScore + domainScore);
+
+  // Get improvement suggestions
+  const { suggestions, potentialPoints } = getImprovementSuggestions(
+    sslScore,
+    domainScore,
+    sslData,
+    domainData
+  );
+
   const sslDaysLeft = Number(sslData?.["Days Left"]?.replace(/\D/g, "")) || 0;
   const domainDaysLeft = Number(domainData?.daysLeft) || 0;
   const renewalSoon = sslDaysLeft < 40 || domainDaysLeft < 40;
@@ -103,13 +146,39 @@ function SSLDomain({ url }) {
     : "Not Protected";
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 ">
       <div className="max-w-5xl mx-auto space-y-6">
+        {/* Score Display */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
+          <div className="flex justify-center">
+            <ScoreCircle
+              score={totalScore}
+              size="medium"
+              showLabel={true}
+              label="out of 100"
+            />
+          </div>
+        </div>
+
         {/* Summary */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl">
           <h3 className="text-xl font-semibold mb-4 text-white">
             Security & Domain Summary
           </h3>
+          {/* Improvement Suggestion */}
+          {potentialPoints > 0 && (
+            <div className="flex items-start py-3 px-4 rounded-xl bg-blue-500/10 border border-blue-500/20 mb-4">
+              <TrendingUp className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="text-blue-300 text-sm font-medium">
+                  Fix these to earn {potentialPoints} more points:
+                </span>
+                <span className="text-blue-200 text-sm ml-1">
+                  {suggestions.join(", ")}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Active/Inactive messages */}
           <div className="space-y-3 mb-4">
@@ -173,7 +242,7 @@ function SSLDomain({ url }) {
 
           {/* Renewal message */}
           {renewalSoon && (
-            <div className="flex items-center py-3 px-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+            <div className="flex items-center py-3 px-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 mt-3">
               <AlertTriangle className="w-5 h-5 text-yellow-400 mr-3" />
               <span className="text-yellow-300 text-sm">
                 Renewal recommended —{" "}
@@ -225,7 +294,6 @@ function SSLDomain({ url }) {
                   domainData?.isProtected ? "Server-side" : "Not Protected"
                 }
               />
-
               <InfoRow label="Days Left" value={domainData?.daysLeft} />
               <InfoRow label="Valid Until" value={domainData?.expiryDate} />
             </div>

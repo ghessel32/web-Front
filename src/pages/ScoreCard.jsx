@@ -43,15 +43,19 @@ const CHECKS_CONFIG = [
   { id: "links", label: "Broken Links", icon: Link, color: "text-orange-500" },
 ];
 
-// Utility functions moved outside component
 const extractDomain = (urlString) => {
   try {
-    const url = new URL(
-      urlString.startsWith("http") ? urlString : `https://${urlString}`
-    );
-    return url.hostname.replace("www.", "");
+    const input = urlString.startsWith("http")
+      ? urlString
+      : `https://${urlString}`;
+    const url = new URL(input);
+
+    const hostname = url.hostname.replace(/^www\./, "");
+    const normalized = `${url.protocol}//${hostname}`;
+
+    return normalized.toLowerCase();
   } catch {
-    return urlString;
+    return urlString.trim().toLowerCase();
   }
 };
 
@@ -129,24 +133,24 @@ export default function WebsiteAnalyzer() {
       return;
     }
 
-    const domain = extractDomain(url);
-    const urlToCheck = url.startsWith("http") ? url : `https://${url}`;
+    const normalizedUrl = extractDomain(url);
+    const domain = normalizedUrl.replace(/^https?:\/\//, "");
     const websiteName =
       domain.split(".")[0].charAt(0).toUpperCase() +
       domain.split(".")[0].slice(1);
 
     setWebsiteInfo({
       name: websiteName,
-      url: urlToCheck,
+      url: normalizedUrl,
     });
 
     const services = {
-      uptime: uptimeService(urlToCheck),
-      links: broLinkservice(urlToCheck),
-      security: getSecurityThreatScore(urlToCheck),
-      ssl: getSSLDomainScore(urlToCheck),
-      seo: seoService(urlToCheck),
-      speed: speedService(urlToCheck),
+      uptime: uptimeService(normalizedUrl),
+      links: broLinkservice(normalizedUrl),
+      security: getSecurityThreatScore(normalizedUrl),
+      ssl: getSSLDomainScore(normalizedUrl),
+      seo: seoService(normalizedUrl),
+      speed: speedService(normalizedUrl),
     };
 
     const results = {};

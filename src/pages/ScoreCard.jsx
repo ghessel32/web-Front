@@ -185,7 +185,7 @@ export default function WebsiteAnalyzer() {
             setIsAnalyzing(false);
 
             sessionStorage.setItem(
-              `score_${urlToCheck}`,
+              `score_${normalizedUrl}`,
               JSON.stringify(results)
             );
 
@@ -196,7 +196,7 @@ export default function WebsiteAnalyzer() {
               },
               body: JSON.stringify({
                 name: websiteName,
-                url: urlToCheck,
+                url: normalizedUrl,
                 score: finalScore,
               }),
             })

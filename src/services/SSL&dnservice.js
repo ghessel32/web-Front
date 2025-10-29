@@ -91,21 +91,34 @@ async function getSSLDomainScore(url) {
 
       sslData = await sslResponse.json();
       domainData = await domainResponse.json();
+      console.log(domainData);
 
       // Store raw data only
       sessionStorage.setItem(sslKey, JSON.stringify(sslData));
       sessionStorage.setItem(domainKey, JSON.stringify(domainData));
     }
 
-    // Calculate scores only
-    const sslScore = calculateSSLScore(sslData);
-    const domainScore = calculateDomainScore(domainData);
-    const totalScore = Math.round((sslScore + domainScore) * 100) / 100;
-    
-    // Generate dynamic message
-    const message = getSSLDomainMessage(sslScore, domainScore);
+    // 🧠 Check if domain unsupported (N/A + 0 days)
+    const isDomainUnsupported =
+      domainData.expiryDate === "N/A" && (domainData.daysLeft === 0 || domainData.days_left === 0);
 
-    // ✅ Return only scores and dynamic message
+    let sslScore, domainScore, totalScore, message;
+
+    if (isDomainUnsupported) {
+      // 🔹 SSL only mode
+      sslScore = SSL_WEIGHT * 2; // =100 (50×2 to normalize to total 100)
+      domainScore = 0;
+      totalScore = sslScore;
+      message =
+        "SSL is verified and active.";
+    } else {
+      // Normal scoring flow
+      sslScore = calculateSSLScore(sslData);
+      domainScore = calculateDomainScore(domainData);
+      totalScore = Math.round((sslScore + domainScore) * 100) / 100;
+      message = getSSLDomainMessage(sslScore, domainScore);
+    }
+
     return {
       totalScore,
       ssl: sslScore,
@@ -117,5 +130,6 @@ async function getSSLDomainScore(url) {
     throw error;
   }
 }
+
 
 export default getSSLDomainScore;

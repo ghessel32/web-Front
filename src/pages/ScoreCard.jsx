@@ -113,6 +113,7 @@ export default function WebsiteAnalyzer() {
       });
 
       const data = await response.json();
+      console.log(data);
 
       if (!data.exists) {
         setIsAnalyzing(false);

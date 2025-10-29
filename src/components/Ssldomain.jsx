@@ -39,29 +39,38 @@ function calculateDomainScore(data) {
   return Math.round(score * 100) / 100;
 }
 
-// Generate improvement suggestions
-function getImprovementSuggestions(sslScore, domainScore, sslData, domainData) {
+//Get improvement suggestions
+function getImprovementSuggestions(
+  sslScore,
+  domainScore,
+  sslData,
+  domainData,
+  domainUnsupported
+) {
   const suggestions = [];
   let potentialPoints = 0;
 
   // Check SSL
   if (sslScore < SSL_WEIGHT) {
     suggestions.push("Enable or renew SSL certificate");
-    potentialPoints += SSL_WEIGHT - sslScore;
+    potentialPoints += domainUnsupported
+      ? (SSL_WEIGHT - sslScore) * 2 // Double the points if domain unsupported
+      : SSL_WEIGHT - sslScore;
   }
 
-  // Check domain validity
-  const daysLeft = domainData?.daysLeft || 0;
-  if (daysLeft <= 2) {
-    suggestions.push("Renew your domain");
-    potentialPoints += DOMAIN_VALIDITY_WEIGHT;
-  }
+  // Only check domain issues if domain is supported
+  if (!domainUnsupported) {
+    const daysLeft = domainData?.daysLeft || 0;
+    if (daysLeft <= 2) {
+      suggestions.push("Renew your domain");
+      potentialPoints += DOMAIN_VALIDITY_WEIGHT;
+    }
 
-  // Check domain protection
-  const isProtected = domainData?.isProtected || false;
-  if (!isProtected) {
-    suggestions.push("Enable server-side domain protection");
-    potentialPoints += DOMAIN_PROTECTION_WEIGHT;
+    const isProtected = domainData?.isProtected || false;
+    if (!isProtected) {
+      suggestions.push("Enable server-side domain protection");
+      potentialPoints += DOMAIN_PROTECTION_WEIGHT;
+    }
   }
 
   return { suggestions, potentialPoints };
@@ -120,17 +129,31 @@ function SSLDomain({ url }) {
     );
   }
 
+  function isUnsupportedDomain(domainData) {
+    const invalidValues = [null, undefined, "N/A", "", 0];
+    const daysLeft = domainData?.daysLeft;
+    const expiry = domainData?.expiryDate;
+    return invalidValues.includes(daysLeft) && invalidValues.includes(expiry);
+  }
+
   // Calculate scores
   const sslScore = calculateSSLScore(sslData);
-  const domainScore = calculateDomainScore(domainData);
-  const totalScore = Math.round(sslScore + domainScore);
+  const domainUnsupported = isUnsupportedDomain(domainData);
+  const domainScore = domainUnsupported ? 0 : calculateDomainScore(domainData);
+
+  const totalScore = domainUnsupported
+    ? Math.round(sslScore * 2)
+    : Math.round(sslScore + domainScore);
+
+  console.log(totalScore);
 
   // Get improvement suggestions
   const { suggestions, potentialPoints } = getImprovementSuggestions(
     sslScore,
     domainScore,
     sslData,
-    domainData
+    domainData,
+    domainUnsupported
   );
 
   const sslDaysLeft = Number(sslData?.["Days Left"]?.replace(/\D/g, "")) || 0;
@@ -211,7 +234,12 @@ function SSLDomain({ url }) {
                 />
                 <span className="text-gray-200">Domain</span>
               </div>
-              {isDomainActive ? (
+              {domainUnsupported ? (
+                <span className="text-yellow-400 text-sm flex items-center">
+                  <AlertTriangle className="w-4 h-4 mr-1" /> Unsupported domain
+                  type
+                </span>
+              ) : isDomainActive ? (
                 <span className="text-green-400 text-sm flex items-center">
                   <CheckCircle className="w-4 h-4 mr-1" /> Active
                 </span>
@@ -222,7 +250,7 @@ function SSLDomain({ url }) {
               )}
             </div>
 
-            {protectionLabel === "Not Protected" && (
+            {!domainUnsupported && protectionLabel === "Not Protected" && (
               <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/5">
                 <div className="flex items-center">
                   <Globe
@@ -241,7 +269,7 @@ function SSLDomain({ url }) {
           </div>
 
           {/* Renewal message */}
-          {renewalSoon && (
+          {!domainUnsupported && renewalSoon && (
             <div className="flex items-center py-3 px-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 mt-3">
               <AlertTriangle className="w-5 h-5 text-yellow-400 mr-3" />
               <span className="text-yellow-300 text-sm">
@@ -288,14 +316,23 @@ function SSLDomain({ url }) {
               </h3>
             </div>
             <div className="space-y-3">
-              <InfoRow
-                label="Protection"
-                value={
-                  domainData?.isProtected ? "Server-side" : "Not Protected"
-                }
-              />
-              <InfoRow label="Days Left" value={domainData?.daysLeft} />
-              <InfoRow label="Valid Until" value={domainData?.expiryDate} />
+              {domainUnsupported ? (
+                <div className="text-gray-400 text-sm bg-white/5 p-4 rounded-xl border border-white/10">
+                  This domain type isn’t fully supported yet. We’ve calculated
+                  your score using SSL information only.
+                </div>
+              ) : (
+                <>
+                  <InfoRow
+                    label="Protection"
+                    value={
+                      domainData?.isProtected ? "Server-side" : "Not Protected"
+                    }
+                  />
+                  <InfoRow label="Days Left" value={domainData?.daysLeft} />
+                  <InfoRow label="Valid Until" value={domainData?.expiryDate} />
+                </>
+              )}
             </div>
           </div>
         </div>

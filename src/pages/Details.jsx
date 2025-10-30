@@ -8,7 +8,8 @@ import {
   Activity,
   ExternalLink,
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Uptimer from "../components/Uptimer.jsx";
 import SSLDomain from "../components/Ssldomain.jsx";
 import BrokenLinks from "../components/BrokenLink.jsx";
@@ -19,6 +20,7 @@ import SpeedPerformance from "../components/Speed.jsx";
 const Details = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [dataLoaded, setDataLoaded] = useState(false);
+  const navigate = useNavigate();
   const location = useLocation();
   const { name, url } = location.state || {};
 
@@ -95,6 +97,9 @@ const Details = () => {
             </a>
           </div>
         </div>
+        <button 
+        onClick={()=> navigate("/leaderboard")}
+        className="text-xs sm:text-sm bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold px-3 sm:px-4 py-2 rounded-md cursor-pointer transition-all duration-200 mr-20 mt-5">LeaderBoard</button>
       </div>
 
       {/* --- Tabs Navigation --- */}

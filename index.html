@@ -2,19 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Lacquer&family=Macondo&family=Protest+Revolution&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&family=Spicy+Rice&display=swap"
-      rel="stylesheet"
-    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebVytal: Website Health Companion</title>
+    <title>WebVytal – Free Website Health, SEO & Performance Checker</title>
     <meta name="title" content="WebVytal" />
     <meta
       name="description"
-      content="Check your website’s health in simple plain language. Get actionable insights to improve performance, SEO, and security."
+      content="WebVytal helps you check your website’s SEO, performance, and security health in plain language. Free tool to monitor and improve your site easily."
     />
 
     <!-- SEO Keywords -->
@@ -23,6 +16,7 @@
       content="website monitoring, uptime monitoring, website speed test, website security check, SEO audit, SSL check, website performance tool, website health, WebVytal"
     />
     <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://webvytal.vercel.app/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -32,7 +26,8 @@
       property="og:description"
       content="Check your website’s health in simple plain language. Get actionable insights to improve performance, SEO, and security."
     />
-    <meta property="og:image" content="/Card.png" />
+    <meta property="og:image" content="https://webvytal.vercel.app/Card.png" />
+    <meta property="og:site_name" content="WebVytal" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
@@ -42,13 +37,38 @@
       property="twitter:description"
       content="Check your website’s health in simple plain language. Get actionable insights to improve performance, SEO, and security."
     />
-    <meta property="twitter:image" content="/Card.png" />
+    <meta
+      property="twitter:image"
+      content="https://webvytal.vercel.app/Card.png"
+    />
 
-    <!-- Optional: Apple Touch Icon -->
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="canonical" href="https://webvytal.vercel.app/" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Lacquer&family=Macondo&family=Protest+Revolution&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&family=Spicy+Rice&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Structured Data (Schema.org for Google) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "WebVytal",
+        "url": "https://webvytal.vercel.app/",
+        "description": "Check your website’s health in simple plain language. Get actionable insights to improve performance, SEO, and security.",
+        "applicationCategory": "WebApplication",
+        "operatingSystem": "All",
+        "image": "https://webvytal.vercel.app/Card.png"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

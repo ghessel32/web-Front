@@ -43,19 +43,12 @@ const CHECKS_CONFIG = [
   { id: "links", label: "Broken Links", icon: Link, color: "text-orange-500" },
 ];
 
-const extractDomain = (urlString) => {
+const extractDomain = (fullUrl) => {
   try {
-    const input = urlString.startsWith("http")
-      ? urlString
-      : `https://${urlString}`;
-    const url = new URL(input);
-
-    const hostname = url.hostname.replace(/^www\./, "");
-    const normalized = `${url.protocol}//${hostname}`;
-
-    return normalized.toLowerCase();
+    const u = new URL(fullUrl);
+    return u.host.replace(/^www\./, ""); // keeps subdomains + port
   } catch {
-    return urlString.trim().toLowerCase();
+    return null;
   }
 };
 
@@ -89,6 +82,24 @@ export default function WebsiteAnalyzer() {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
+  const normalizeUrlInput = (input) => {
+    let url = input.trim().replace(/\s+/g, "");
+
+    // If no protocol, add https://
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+
+    try {
+      // If URL is valid, return it as is (with path)
+      const u = new URL(url);
+      // Drop trailing "/" only if it's the ONLY slash
+      return u.href.replace(/\/$/, "");
+    } catch {
+      return null; // invalid URL
+    }
+  };
+
   // Memoize website info to prevent unnecessary recalculations
   const faviconUrl = useMemo(
     () =>
@@ -99,6 +110,13 @@ export default function WebsiteAnalyzer() {
 
   const handleAnalyze = async () => {
     if (!url) return;
+
+    // Normalize the URL before processing
+    const normalizedInputUrl = normalizeUrlInput(url);
+    if (!normalizedInputUrl) {
+      setPageError("Invalid URL. Please enter a valid website.");
+      return;
+    }
 
     setIsAnalyzing(true);
     setShowResults(true);
@@ -113,7 +131,7 @@ export default function WebsiteAnalyzer() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: normalizedInputUrl }),
       });
 
       const data = await response.json();
@@ -133,24 +151,23 @@ export default function WebsiteAnalyzer() {
       return;
     }
 
-    const normalizedUrl = extractDomain(url);
-    const domain = normalizedUrl.replace(/^https?:\/\//, "");
+    const domain = extractDomain(normalizedInputUrl);
     const websiteName =
       domain.split(".")[0].charAt(0).toUpperCase() +
       domain.split(".")[0].slice(1);
 
     setWebsiteInfo({
       name: websiteName,
-      url: normalizedUrl,
+      url: normalizedInputUrl, 
     });
 
     const services = {
-      uptime: uptimeService(normalizedUrl),
-      links: broLinkservice(normalizedUrl),
-      security: getSecurityThreatScore(normalizedUrl),
-      ssl: getSSLDomainScore(normalizedUrl),
-      seo: seoService(normalizedUrl),
-      speed: speedService(normalizedUrl),
+      uptime: uptimeService(normalizedInputUrl),
+      links: broLinkservice(normalizedInputUrl),
+      security: getSecurityThreatScore(normalizedInputUrl),
+      ssl: getSSLDomainScore(normalizedInputUrl),
+      seo: seoService(normalizedInputUrl),
+      speed: speedService(normalizedInputUrl),
     };
 
     const results = {};
@@ -185,7 +202,7 @@ export default function WebsiteAnalyzer() {
             setIsAnalyzing(false);
 
             sessionStorage.setItem(
-              `score_${normalizedUrl}`,
+              `score_${normalizedInputUrl}`,
               JSON.stringify(results)
             );
 
@@ -196,7 +213,7 @@ export default function WebsiteAnalyzer() {
               },
               body: JSON.stringify({
                 name: websiteName,
-                url: normalizedUrl,
+                url: normalizedInputUrl,
                 score: finalScore,
               }),
             })

@@ -18,19 +18,18 @@ import SEOAnalysis from "../components/Seo.jsx";
 import SpeedPerformance from "../components/Speed.jsx";
 
 const Details = () => {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState("speed");
   const navigate = useNavigate();
   const location = useLocation();
   const { name, url } = location.state || {};
 
   const tabs = [
-    { id: "overview", label: "Uptime", icon: Globe },
     { id: "speed", label: "Speed", icon: Activity },
     { id: "ssl", label: "SSL&Domain", icon: Lock },
     { id: "seo", label: "SEO", icon: Search },
     { id: "security", label: "Security", icon: Shield },
     { id: "broken", label: "Broken Links", icon: Link2Off },
+    { id: "overview", label: "Uptime", icon: Globe },
   ];
 
   const renderTabContent = () => {
@@ -97,9 +96,12 @@ const Details = () => {
             </a>
           </div>
         </div>
-        <button 
-        onClick={()=> navigate("/leaderboard")}
-        className="text-xs sm:text-sm bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold px-3 sm:px-4 py-2 rounded-md cursor-pointer transition-all duration-200 mr-20 mt-5">LeaderBoard</button>
+        <button
+          onClick={() => navigate("/leaderboard")}
+          className="text-xs sm:text-sm bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold px-3 sm:px-4 py-2 rounded-md cursor-pointer transition-all duration-200 mr-20 mt-5"
+        >
+          LeaderBoard
+        </button>
       </div>
 
       {/* --- Tabs Navigation --- */}

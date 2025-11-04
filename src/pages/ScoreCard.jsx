@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
@@ -79,6 +79,7 @@ export default function WebsiteAnalyzer() {
   const [completedCount, setCompletedCount] = useState(0);
   const [overallScore, setOverallScore] = useState(null);
   const [websiteInfo, setWebsiteInfo] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
@@ -100,6 +101,36 @@ export default function WebsiteAnalyzer() {
     }
   };
 
+  useEffect(() => {
+    const savedUrl = sessionStorage.getItem("last_url");
+    if (!savedUrl) return;
+
+    const existingScore = sessionStorage.getItem(`score_${savedUrl}`);
+    if (!existingScore) return;
+
+    // ✅ Restore UI instantly
+    setIsRestoring(true);     
+    setUrl(savedUrl);
+    setShowResults(true);
+    setIsAnalyzing(true);
+    setCompletedCount(6)
+
+    const domain = extractDomain(savedUrl);
+    const websiteName =
+      domain.split(".")[0].charAt(0).toUpperCase() +
+      domain.split(".")[0].slice(1);
+
+    setWebsiteInfo({
+      name: websiteName,
+      url: savedUrl,
+    });
+
+    // ✅ Small delay — let UI mount before running scan
+    setTimeout(() => {
+      handleAnalyze(savedUrl, { isResume: true });
+    }, 400);
+  }, []);
+
   // Memoize website info to prevent unnecessary recalculations
   const faviconUrl = useMemo(
     () =>
@@ -108,22 +139,25 @@ export default function WebsiteAnalyzer() {
     [websiteInfo]
   );
 
-  const handleAnalyze = async () => {
-    if (!url) return;
+  const handleAnalyze = async (passedUrl, options = {}) => {
+    const activeUrl = passedUrl || url;
+    if (!activeUrl) return;
 
-    // Normalize the URL before processing
-    const normalizedInputUrl = normalizeUrlInput(url);
+    const normalizedInputUrl = normalizeUrlInput(activeUrl);
     if (!normalizedInputUrl) {
       setPageError("Invalid URL. Please enter a valid website.");
       return;
     }
 
+    if (!options.isResume) {
+      setShowResults(true);
+      setCardResults({});
+      setCompletedCount(0);
+      setOverallScore(null);
+      setPageError(null);
+    }
+
     setIsAnalyzing(true);
-    setShowResults(true);
-    setCardResults({});
-    setCompletedCount(0);
-    setOverallScore(null);
-    setPageError(null);
 
     try {
       const response = await fetch(`${apiUrl}/check-page`, {
@@ -158,7 +192,7 @@ export default function WebsiteAnalyzer() {
 
     setWebsiteInfo({
       name: websiteName,
-      url: normalizedInputUrl, 
+      url: normalizedInputUrl,
     });
 
     const services = {
@@ -196,11 +230,11 @@ export default function WebsiteAnalyzer() {
               scores.reduce((acc, curr) => acc + curr, 0) / scores.length;
 
             const finalScore = Math.round(overall);
-            console.log("final score", finalScore);
 
             setOverallScore(finalScore);
             setIsAnalyzing(false);
 
+            sessionStorage.setItem("last_url", normalizedInputUrl);
             sessionStorage.setItem(
               `score_${normalizedInputUrl}`,
               JSON.stringify(results)
@@ -272,8 +306,8 @@ export default function WebsiteAnalyzer() {
             </p>
           </header>
 
-          {/* Input Section */}
-          {!isAnalyzing && !overallScore && (
+          {/* Input Section - Always visible */}
+          {completedCount < CHECKS_CONFIG.length && (
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 sm:p-6 md:p-8 mb-8 border border-white/20">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
@@ -284,13 +318,21 @@ export default function WebsiteAnalyzer() {
                   className="flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-base sm:text-lg"
                   onKeyPress={(e) => e.key === "Enter" && handleAnalyze()}
                   aria-label="Website URL"
+                  disabled={isAnalyzing}
                 />
                 <button
                   onClick={handleAnalyze}
-                  disabled={!url}
+                  disabled={!url || isAnalyzing}
                   className="px-6 sm:px-8 py-3 sm:py-4 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base sm:text-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                 >
-                  Analyze
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    "Analyze"
+                  )}
                 </button>
               </div>
             </div>
@@ -363,7 +405,7 @@ export default function WebsiteAnalyzer() {
               )}
 
               {/* Overall Score */}
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p- border border-white/20 text-center">
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 text-center">
                 <h2 className="text-2xl font-bold text-white mb-6">
                   Overall Health Score
                 </h2>
@@ -523,11 +565,21 @@ export default function WebsiteAnalyzer() {
             </div>
           )}
 
-          {completedCount == 6 && (
-            <div className="w-full flex justify-center">
+          {completedCount === CHECKS_CONFIG.length && (
+            <div className="w-full flex justify-center gap-4">
+              <button
+                onClick={() => {
+                  setShowResults(false);
+                  setUrl("");
+                  setCompletedCount(0);
+                }}
+                className="text-xs sm:text-sm bg-white/10 hover:bg-white/20 text-white font-bold px-5 py-3 rounded-md cursor-pointer transition-all duration-200 m-5 border border-white/20"
+              >
+                Analyze Another Website
+              </button>
               <button
                 onClick={handleSeeDetails}
-                className="text-xs sm:text-sm bg-cyan-400 hover:bg-cyan-300 text-white font-bold px-5 sm:px-5 py-3 rounded-md cursor-pointer transition-all duration-200 m-5"
+                className="text-xs sm:text-sm bg-cyan-400 hover:bg-cyan-300 text-white font-bold px-5 py-3 rounded-md cursor-pointer transition-all duration-200 m-5"
               >
                 See Details
               </button>
